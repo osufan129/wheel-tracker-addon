@@ -124,7 +124,14 @@ class CcTrade(db.Model):
 
 # Initialize the database on startup
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+    except Exception as e:
+        if "already exists" in str(e):
+            pass
+        else:
+            raise
+
 
 # --- Routes ---
 @app.route('/')
