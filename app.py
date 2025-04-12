@@ -179,25 +179,27 @@ def add_csp_route():
             # --- Input Validation and Sanitization ---
             # Check if all required fields are present
             required_fields = ['ticker', 'sell_date', 'strike_price', 'expiration_date', 'premium_received', 'contracts']
-            try:
-                if not all(field in request.form for field in required_fields):
-                    flash('All fields are required.', 'error')
-                    logger.warning("Missing fields on CSP creation")
-                    return redirect(url_for('add_csp_route'))
-
-                ticker = request.form['ticker'].upper()
-                sell_date_str = request.form['sell_date']
-                expiration_date_str = request.form['expiration_date']
-
-                # Sanitize string inputs (basic HTML sanitization)
-                ticker = ''.join(char for char in ticker if char.isalnum())
-
-            # Validate ticker (must be only letters)
-            if not ticker.isalpha():
-                flash('Ticker must contain only letters.', 'error')
+            if not all(field in request.form for field in required_fields):
+                flash('All fields are required.', 'error')
+                logger.warning("Missing fields on CSP creation")
                 return redirect(url_for('add_csp_route'))
 
-            # Validate dates
+            ticker = request.form['ticker'].upper()
+            sell_date_str = request.form['sell_date']
+            expiration_date_str = request.form['expiration_date']
+
+            # Sanitize string inputs (basic HTML sanitization)
+            ticker = ''.join(char for char in ticker if char.isalnum())
+
+            # Validate inputs
+            try:
+                strike_price = float(request.form['strike_price'])
+                premium_received = float(request.form['premium_received'])
+                contracts = int(request.form['contracts'])
+            except ValueError:
+                flash('Strike Price, Premium Received, and Contracts must be valid numbers.', 'error')
+                return redirect(url_for('add_csp_route'))
+
             try:
                 sell_date = datetime.strptime(sell_date_str, '%Y-%m-%d').date()
                 expiration_date = datetime.strptime(expiration_date_str, '%Y-%m-%d').date()
@@ -211,21 +213,15 @@ def add_csp_route():
                 flash('Sell date must be today or in the past and expiration date must be in the future.', 'error')
                 return redirect(url_for('add_csp_route'))
 
-            
-                strike_price = float(request.form['strike_price'])
-                premium_received = float(request.form['premium_received'])
-                contracts = int(request.form['contracts'])
-
-                
-            except ValueError:
-                flash('Strike Price, Premium Received, and Contracts must be valid numbers.', 'error')
+            # Validate ticker (must be only letters)
+            if not ticker.isalpha():
+                flash('Ticker must contain only letters.', 'error')
                 return redirect(url_for('add_csp_route'))
 
-            # --- End of Input Validation ---
-
+            
 
             try:
-                # Find or create the underlying stock
+                 # Find or create the underlying stock
                 underlying = Underlying.query.filter_by(ticker=ticker).first()
                 if not underlying:
                     underlying = Underlying(ticker=ticker)
@@ -264,15 +260,9 @@ def add_csp_route():
                 logger.exception(f"Unexpected error while adding a new CSP: {e}")
                 return redirect(url_for('add_csp_route'))
 
-        
-    except Exception as e:
-        flash(f'An error occurred while processing your CSP: {str(e)}', 'error')
-        logger.exception(f"Unexpected error while adding a new CSP: {e}")
         return redirect(url_for('add_csp_route'))
-            return redirect(url_for('add_csp_route'))
-
-    except Exception as e:
-        flash(f'An error occurred while processing your CSP: {str(e)}', 'error')
+    except Exception as e :
+        flash(f'An error occurred while processing your CSP: {str(e)}', 'error')      
         
     #Prefill the form if the data is available
     ticker = request.args.get('ticker', '')
