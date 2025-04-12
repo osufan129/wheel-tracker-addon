@@ -16,7 +16,6 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY app.py .
-COPY static static/
 COPY templates templates/
 COPY run.sh /
 
