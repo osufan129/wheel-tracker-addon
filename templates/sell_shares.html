@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Sell Shares - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1>Sell Shares Manually</h1>
+
+    <div class="card mt-4 mb-4">
+        <div class="card-header">
+            Shares Details:
+        </div>
+        <div class="card-body">
+            <p class="card-text">
+                <strong>Ticker:</strong> {{ share_holding.underlying.ticker }} <br>
+                <strong>Number of Shares Held:</strong> {{ share_holding.number_of_shares }} <br>
+                <strong>Acquired:</strong> {{ share_holding.acquisition_date.strftime('%Y-%m-%d') }} <br>
+                <strong>Cost Basis/Share:</strong> {{ "%.2f"|format(share_holding.cost_basis_per_share) }}
+            </p>
+        </div>
+    </div>
+
+    <form method="post">
+         <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="sell_date" class="form-label">Sell Date:</label>
+                <input type="date" class="form-control" id="sell_date" name="sell_date" required>
+            </div>
+            <div class="col-md-6">
+                <label for="sell_price" class="form-label">Sell Price per Share:</label>
+                <input type="number" step="0.01" class="form-control" id="sell_price" name="sell_price" required>
+            </div>
+        </div>
+        <!-- Add field for number of shares to sell if allowing partial sales? For now, assumes selling all. -->
+
+        <button type="submit" class="btn btn-danger">Confirm Sale</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+
+{% endblock %} 

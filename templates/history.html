@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Trade History - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Trade History</h1>
+
+    <h2 class="mt-4">Closed Cash Secured Puts (CSPs)</h2>
+    {% if closed_csps %}
+        <div class="table-responsive">
+            <table class="table table-striped table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Sell Date</th>
+                        <th>Strike</th>
+                        <th>Expiration</th>
+                        <th>Premium</th>
+                        <th>Contracts</th>
+                        <th>Close Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for csp in closed_csps %}
+                    <tr>
+                        <td>{{ csp.underlying.ticker }}</td>
+                        <td>{{ csp.sell_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ "%.2f"|format(csp.strike_price) }}</td>
+                        <td>{{ csp.expiration_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ "%.2f"|format(csp.premium_received) }}</td>
+                        <td>{{ csp.contracts }}</td>
+                        <td>{{ csp.close_date.strftime('%Y-%m-%d') if csp.close_date else 'N/A' }}</td>
+                        <td><span class="badge {{ 'bg-success' if csp.status == OptionStatus.EXPIRED else 'bg-secondary' }}">{{ csp.status.value }}</span></td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('edit_closed_csp_route', csp_id=csp.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                <form action="{{ url_for('delete_csp_route', csp_id=csp.id) }}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this CSP?');">
+                                    <button type="submit" class="btn btn-sm btn-danger ms-1">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No closed CSPs found.</p>
+    {% endif %}
+
+    <h2 class="mt-5">Closed Covered Calls (CCs)</h2>
+     {% if closed_ccs %}
+         <div class="table-responsive">
+            <table class="table table-striped table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Sell Date</th>
+                        <th>Strike</th>
+                        <th>Expiration</th>
+                        <th>Premium</th>
+                        <th>Contracts</th>
+                        <th>Close Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cc in closed_ccs %}
+                    <tr>
+                        <td>{{ cc.underlying.ticker }}</td>
+                        <td>{{ cc.sell_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ "%.2f"|format(cc.strike_price) }}</td>
+                        <td>{{ cc.expiration_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ "%.2f"|format(cc.premium_received) }}</td>
+                        <td>{{ cc.contracts }}</td>
+                        <td>{{ cc.close_date.strftime('%Y-%m-%d') if cc.close_date else 'N/A' }}</td>
+                        <td><span class="badge {{ 'bg-success' if cc.status == OptionStatus.EXPIRED else 'bg-danger' }}">{{ cc.status.value }}</span></td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('edit_closed_cc_route', cc_id=cc.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                <form action="{{ url_for('delete_cc_route', cc_id=cc.id) }}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this CC?');">
+                                    <button type="submit" class="btn btn-sm btn-danger ms-1">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No closed CCs found.</p>
+    {% endif %}
+
+    <h2 class="mt-5">Disposed Shares</h2>
+    {% if disposed_shares %}
+        <div class="table-responsive">
+            <table class="table table-striped table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Acquired Date</th>
+                        <th>Shares</th>
+                        <th>Cost Basis/Share</th>
+                        <th>Disposal Date</th>
+                        <th>Disposal Price/Share</th>
+                        <th>Status</th>
+                        <th>P/L per Share</th>
+                        <th>Total P/L</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for share in disposed_shares %}
+                    {% set pl_per_share = share.disposal_price_per_share - share.cost_basis_per_share if share.disposal_price_per_share is not none else 0 %}
+                    {% set total_pl = pl_per_share * share.number_of_shares %}
+                    <tr>
+                        <td>{{ share.underlying.ticker }}</td>
+                        <td>{{ share.acquisition_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ share.number_of_shares }}</td>
+                        <td>{{ "%.2f"|format(share.cost_basis_per_share) }}</td>
+                        <td>{{ share.disposal_date.strftime('%Y-%m-%d') if share.disposal_date else 'N/A' }}</td>
+                        <td>{{ "%.2f"|format(share.disposal_price_per_share) if share.disposal_price_per_share else 'N/A' }}</td>
+                        <td><span class="badge bg-secondary">{{ share.status.value }}</span></td>
+                        <td>
+                            <span class="{{ 'text-success' if pl_per_share >= 0 else 'text-danger' }}">
+                                {{ "%.2f"|format(pl_per_share) }}
+                            </span>
+                        </td>
+                         <td>
+                             <span class="{{ 'text-success' if total_pl >= 0 else 'text-danger' }}">
+                                {{ "%.2f"|format(total_pl) }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('edit_disposed_share_route', share_id=share.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                <form action="{{ url_for('delete_share_route', share_id=share.id) }}" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this share record?');">
+                                    <button type="submit" class="btn btn-sm btn-danger ms-1">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No disposed shares found.</p>
+    {% endif %}
+
+{% endblock %} 

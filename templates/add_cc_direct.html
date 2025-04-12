@@ -1,0 +1,290 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Covered Call - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Add Covered Call (CC)</h1>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">New Covered Call</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('add_cc_direct_route') }}">
+                <div class="mb-3">
+                    <label for="ticker" class="form-label">Stock Ticker:</label>
+                    <input type="text" class="form-control text-uppercase" id="ticker" name="ticker" required {% if ticker %}value="{{ ticker }}"{% endif %}>
+                </div>
+
+                <div class="mb-3">
+                    <label for="share_holding" class="form-label">Share Holding:</label>
+                    <select class="form-select" id="share_holding" name="share_holding_id" required>
+                        <option value="">Select Share Holding</option>
+                        {% for share in available_shares %}
+                            <option value="{{ share.id }}">{{ share.underlying.ticker }} - {{ share.number_of_shares }} shares @ ${{ "%.2f"|format(share.cost_basis_per_share) }} ({{ share.acquisition_date.strftime('%Y-%m-%d') }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="sell_date" class="form-label">Sell Date:</label>
+                        <input type="date" class="form-control" id="sell_date" name="sell_date" value="{{ today }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="expiration_date" class="form-label">Expiration Date:</label>
+                        <input type="date" class="form-control" id="expiration_date" name="expiration_date" required {% if expiration_date %}value="{{ expiration_date }}"{% endif %}>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="strike_price" class="form-label">Strike Price:</label>
+                        <div class="input-group">
+                            <div class="input-group-text">$</div>
+                            <input type="number" step="0.01" class="form-control" id="strike_price" name="strike_price" required {% if strike_price %}value="{{ strike_price }}"{% endif %}>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="premium_received" class="form-label">Premium Received (Total):</label>
+                        <div class="input-group">
+                            <div class="input-group-text">$</div>
+                            <input type="number" step="0.01" class="form-control" id="premium_received" name="premium_received" required {% if premium_received %}value="{{ premium_received }}"{% endif %}>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="contracts" class="form-label">Number of Contracts:</label>
+                    <input type="number" min="1" class="form-control" id="contracts" name="contracts" value="1" required {% if contracts %}value="{{ contracts }}"{% endif %}>
+                    <div class="form-text" id="contracts_help">Each contract represents 100 shares</div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div id="cost_basis" class="text-muted">
+                            Cost Basis: <span id="cost_basis_value">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div id="premium_per_share" class="text-muted">
+                            Premium per Share: <span id="premium_per_share_value">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div id="return_perc" class="text-muted">
+                            Return: <span id="return_value">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary me-md-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Add Covered Call</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Calculator Card -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Covered Call Calculator</h5>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="calc_current_price" class="form-label">Current Stock Price:</label>
+                    <div class="input-group">
+                        <div class="input-group-text">$</div>
+                        <input type="number" step="0.01" class="form-control" id="calc_current_price">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label for="calc_cost_basis" class="form-label">Your Cost Basis:</label>
+                    <div class="input-group">
+                        <div class="input-group-text">$</div>
+                        <input type="number" step="0.01" class="form-control" id="calc_cost_basis">
+                    </div>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="calc_strike" class="form-label">Strike Price:</label>
+                    <div class="input-group">
+                        <div class="input-group-text">$</div>
+                        <input type="number" step="0.01" class="form-control" id="calc_strike">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="calc_premium" class="form-label">Premium Per Share:</label>
+                    <div class="input-group">
+                        <div class="input-group-text">$</div>
+                        <input type="number" step="0.01" class="form-control" id="calc_premium">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="calc_days" class="form-label">Days to Expiration:</label>
+                    <input type="number" class="form-control" id="calc_days" value="30">
+                </div>
+            </div>
+            <div class="d-grid">
+                <button type="button" class="btn btn-primary" id="calculate_cc_btn">Calculate</button>
+            </div>
+            
+            <div id="cc_results" class="d-none mt-3">
+                <hr>
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>Return Calculations</h6>
+                        <div>Return If Expired: <span id="result_return_expired"></span></div>
+                        <div>Annualized Return: <span id="result_annualized"></span></div>
+                        <div>Return If Called: <span id="result_return_called"></span></div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Profit Scenarios</h6>
+                        <div>Profit If Expired: <span id="result_profit_expired"></span></div>
+                        <div>Profit If Called: <span id="result_profit_called"></span></div>
+                        <div>Breakeven Price: <span id="result_breakeven"></span></div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Risk Analysis</h6>
+                        <div>Upside Cap: <span id="result_upside_cap"></span></div>
+                        <div>Probability ITM: <span id="result_prob_itm"></span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set today's date in sell_date field
+    const today = new Date();
+    if (!document.getElementById('sell_date').value) {
+        document.getElementById('sell_date').value = today.toISOString().split('T')[0];
+    }
+    
+    // Set default expiration date (30 days from today)
+    const expDate = new Date();
+    expDate.setDate(today.getDate() + 30);
+    if (!document.getElementById('expiration_date').value) {
+        document.getElementById('expiration_date').value = expDate.toISOString().split('T')[0];
+    }
+    
+    // Display calculation as user enters data
+    const premiumReceivedInput = document.getElementById('premium_received');
+    const contractsInput = document.getElementById('contracts');
+    const shareHoldingSelect = document.getElementById('share_holding');
+    
+    function updateCalculations() {
+        const premiumReceived = parseFloat(premiumReceivedInput.value) || 0;
+        const contracts = parseInt(contractsInput.value) || 1;
+        const shareHoldingId = shareHoldingSelect.value;
+        
+        const premiumPerShare = premiumReceived / (contracts * 100);
+        document.getElementById('premium_per_share_value').textContent = premiumPerShare ? '$' + premiumPerShare.toFixed(2) : '-';
+        
+        // Get the selected share holding's cost basis
+        if (shareHoldingId) {
+            const selectedOption = shareHoldingSelect.options[shareHoldingSelect.selectedIndex];
+            const costBasisText = selectedOption.textContent.match(/\$([0-9.]+)/);
+            
+            if (costBasisText && costBasisText[1]) {
+                const costBasis = parseFloat(costBasisText[1]);
+                document.getElementById('cost_basis_value').textContent = '$' + costBasis.toFixed(2);
+                
+                // Calculate return percentage
+                if (premiumPerShare && costBasis) {
+                    const returnPerc = (premiumPerShare / costBasis) * 100;
+                    document.getElementById('return_value').textContent = returnPerc.toFixed(2) + '%';
+                } else {
+                    document.getElementById('return_value').textContent = '-';
+                }
+            } else {
+                document.getElementById('cost_basis_value').textContent = '-';
+                document.getElementById('return_value').textContent = '-';
+            }
+        } else {
+            document.getElementById('cost_basis_value').textContent = '-';
+            document.getElementById('return_value').textContent = '-';
+        }
+    }
+    
+    premiumReceivedInput.addEventListener('input', updateCalculations);
+    contractsInput.addEventListener('input', updateCalculations);
+    shareHoldingSelect.addEventListener('change', updateCalculations);
+    
+    // CC Calculator
+    const calculateCcBtn = document.getElementById('calculate_cc_btn');
+    calculateCcBtn.addEventListener('click', function() {
+        const currentPrice = parseFloat(document.getElementById('calc_current_price').value);
+        const costBasis = parseFloat(document.getElementById('calc_cost_basis').value);
+        const strike = parseFloat(document.getElementById('calc_strike').value);
+        const premium = parseFloat(document.getElementById('calc_premium').value);
+        const days = parseInt(document.getElementById('calc_days').value);
+        
+        if (!currentPrice || !costBasis || !strike || !premium || !days) {
+            alert('Please fill in all fields in the calculator.');
+            return;
+        }
+        
+        // Calculate results
+        const returnIfExpired = (premium / costBasis) * 100;
+        const annualizedReturn = returnIfExpired * (365 / days);
+        
+        const returnIfCalled = ((strike - costBasis + premium) / costBasis) * 100;
+        
+        const profitIfExpired = premium * 100; // Per contract
+        const profitIfCalled = (strike - costBasis + premium) * 100; // Per contract
+        
+        const breakeven = costBasis - premium;
+        
+        const upsideCap = ((strike - currentPrice) / currentPrice) * 100;
+        
+        // Display results
+        document.getElementById('result_return_expired').textContent = returnIfExpired.toFixed(2) + '%';
+        document.getElementById('result_annualized').textContent = annualizedReturn.toFixed(2) + '%';
+        document.getElementById('result_return_called').textContent = returnIfCalled.toFixed(2) + '%';
+        
+        document.getElementById('result_profit_expired').textContent = '$' + profitIfExpired.toFixed(2);
+        document.getElementById('result_profit_called').textContent = '$' + profitIfCalled.toFixed(2);
+        document.getElementById('result_breakeven').textContent = '$' + breakeven.toFixed(2);
+        
+        document.getElementById('result_upside_cap').textContent = upsideCap.toFixed(2) + '%';
+        
+        // Simplified probability calculation (very rough estimate)
+        // In real life this would use Black-Scholes model and volatility
+        const pctOTM = ((strike - currentPrice) / currentPrice) * 100;
+        let probITM = 50 - pctOTM; // Very simplified estimate
+        probITM = Math.max(5, Math.min(95, probITM)); // Clamp between 5% and 95%
+        document.getElementById('result_prob_itm').textContent = probITM.toFixed(0) + '%';
+        
+        // Show results
+        document.getElementById('cc_results').classList.remove('d-none');
+    });
+    
+    // Auto-populate calculator from form
+    document.getElementById('strike_price').addEventListener('input', function() {
+        document.getElementById('calc_strike').value = this.value;
+    });
+    
+    premiumReceivedInput.addEventListener('input', function() {
+        const premium = parseFloat(this.value) || 0;
+        const contracts = parseInt(contractsInput.value) || 1;
+        const premiumPerShare = premium / (contracts * 100);
+        document.getElementById('calc_premium').value = premiumPerShare.toFixed(2);
+    });
+    
+    shareHoldingSelect.addEventListener('change', function() {
+        if (this.value) {
+            const selectedOption = this.options[this.selectedIndex];
+            const costBasisText = selectedOption.textContent.match(/\$([0-9.]+)/);
+            if (costBasisText && costBasisText[1]) {
+                document.getElementById('calc_cost_basis').value = costBasisText[1];
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

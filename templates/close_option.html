@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Close Option Early - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1>Close {{ option_type|upper }} Early</h1>
+
+    <div class="card mt-4 mb-4">
+        <div class="card-header">
+            Option Details:
+        </div>
+        <div class="card-body">
+            <p class="card-text">
+                <strong>Ticker:</strong> {{ option.underlying.ticker }} <br>
+                <strong>Type:</strong> {{ option_type|upper }} <br>
+                <strong>Strike:</strong> {{ "%.2f"|format(option.strike_price) }} <br>
+                <strong>Expiration:</strong> {{ option.expiration_date.strftime('%Y-%m-%d') }} <br>
+                <strong>Contracts:</strong> {{ option.contracts }} <br>
+                <strong>Premium Received:</strong> {{ "%.2f"|format(option.premium_received) }}
+                {% if option_type == 'cc' %}
+                    <br><strong>Covering Shares Acquired:</strong> {{ option.share_holding.acquisition_date.strftime('%Y-%m-%d') }}
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <form method="post">
+         <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="close_date" class="form-label">Close Date:</label>
+                <input type="date" class="form-control" id="close_date" name="close_date" required>
+            </div>
+            <div class="col-md-6">
+                <label for="close_cost" class="form-label">Cost to Close (Debit Paid):</label>
+                <input type="number" step="0.01" class="form-control" id="close_cost" name="close_cost" placeholder="Enter positive value for debit" required>
+                <div class="form-text">Enter the total amount paid to buy back the option(s).</div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-danger">Confirm Close Early</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+
+{% endblock %} 

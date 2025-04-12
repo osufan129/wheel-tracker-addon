@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Covered Call - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1>Sell Covered Call (CC)</h1>
+
+    <div class="card mt-4 mb-4">
+        <div class="card-header">
+            Against Shares:
+        </div>
+        <div class="card-body">
+            <p class="card-text">
+                <strong>Ticker:</strong> {{ share_holding.underlying.ticker }} <br>
+                <strong>Number of Shares:</strong> {{ share_holding.number_of_shares }} <br>
+                <strong>Acquired:</strong> {{ share_holding.acquisition_date.strftime('%Y-%m-%d') }} <br>
+                <strong>Cost Basis/Share:</strong> {{ "%.2f"|format(share_holding.cost_basis_per_share) }}
+            </p>
+        </div>
+    </div>
+
+    <form method="post">
+        <input type="hidden" name="share_id" value="{{ share_holding.id }}">
+        <input type="hidden" name="ticker" value="{{ share_holding.underlying.ticker }}">
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="sell_date" class="form-label">Sell Date:</label>
+                <input type="date" class="form-control" id="sell_date" name="sell_date" required>
+            </div>
+            <div class="col-md-6">
+                <label for="expiration_date" class="form-label">Expiration Date:</label>
+                <input type="date" class="form-control" id="expiration_date" name="expiration_date" required>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="strike_price" class="form-label">Strike Price:</label>
+                <input type="number" step="0.01" class="form-control" id="strike_price" name="strike_price" required>
+            </div>
+             <div class="col-md-4">
+                <label for="premium_received" class="form-label">Total Premium Received:</label>
+                <input type="number" step="0.01" class="form-control" id="premium_received" name="premium_received" required>
+            </div>
+            <div class="col-md-4">
+                <label for="contracts" class="form-label">Number of Contracts:</label>
+                {% set max_contracts = (share_holding.number_of_shares / 100) | int %}
+                 <div class="input-group">
+                    <input type="number" class="form-control" id="contracts" name="contracts" value="{{ max_contracts }}" min="1" max="{{ max_contracts }}" required>
+                    <span class="input-group-text">(Max: {{ max_contracts }})</span>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Add CC</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+
+{% endblock %} 

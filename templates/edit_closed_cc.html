@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Closed CC - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1>Edit Closed Covered Call (CC)</h1>
+
+    <form method="post" class="mt-4">
+        <div class="mb-3">
+            <label for="ticker" class="form-label">Ticker Symbol:</label>
+            <input type="text" class="form-control text-uppercase" id="ticker" name="ticker" value="{{ cc.underlying.ticker }}" readonly disabled>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="sell_date" class="form-label">Sell Date:</label>
+                <input type="date" class="form-control" id="sell_date" name="sell_date" value="{{ cc.sell_date.strftime('%Y-%m-%d') }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="expiration_date" class="form-label">Expiration Date:</label>
+                <input type="date" class="form-control" id="expiration_date" name="expiration_date" value="{{ cc.expiration_date.strftime('%Y-%m-%d') }}" required>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="strike_price" class="form-label">Strike Price:</label>
+                <input type="number" step="0.01" class="form-control" id="strike_price" name="strike_price" value="{{ cc.strike_price }}" required>
+            </div>
+            <div class="col-md-4">
+                <label for="premium_received" class="form-label">Total Premium Received:</label>
+                <input type="number" step="0.01" class="form-control" id="premium_received" name="premium_received" value="{{ cc.premium_received }}" required>
+            </div>
+            <div class="col-md-4">
+                <label for="contracts" class="form-label">Number of Contracts:</label>
+                <input type="number" class="form-control" id="contracts" name="contracts" value="{{ cc.contracts }}" min="1" required>
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="close_date" class="form-label">Close Date:</label>
+                <input type="date" class="form-control" id="close_date" name="close_date" value="{{ cc.close_date.strftime('%Y-%m-%d') if cc.close_date else '' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="status" class="form-label">Status:</label>
+                <select class="form-select" id="status" name="status" required>
+                    <option value="{{ OptionStatus.EXPIRED.name }}" {% if cc.status == OptionStatus.EXPIRED %}selected{% endif %}>Expired Worthless</option>
+                    <option value="{{ OptionStatus.ASSIGNED.name }}" {% if cc.status == OptionStatus.ASSIGNED %}selected{% endif %}>Assigned (Called Away)</option>
+                    <option value="{{ OptionStatus.CLOSED.name }}" {% if cc.status == OptionStatus.CLOSED %}selected{% endif %}>Closed Early</option>
+                </select>
+            </div>
+        </div>
+
+        {% if cc.status == OptionStatus.CLOSED %}
+        <div class="row mb-3" id="close_cost_row">
+            <div class="col-md-6">
+                <label for="close_cost" class="form-label">Cost to Close (Debit Paid):</label>
+                <input type="number" step="0.01" class="form-control" id="close_cost" name="close_cost" value="{{ cc.close_cost }}">
+            </div>
+        </div>
+        {% else %}
+        <div class="row mb-3" id="close_cost_row" style="display: none;">
+            <div class="col-md-6">
+                <label for="close_cost" class="form-label">Cost to Close (Debit Paid):</label>
+                <input type="number" step="0.01" class="form-control" id="close_cost" name="close_cost" value="0">
+            </div>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary">Update CC</button>
+        <a href="{{ url_for('history') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+
+    <script>
+        // Show/hide close cost field based on status
+        document.getElementById('status').addEventListener('change', function() {
+            const closeStatus = '{{ OptionStatus.CLOSED.name }}';
+            const closeRow = document.getElementById('close_cost_row');
+            
+            if (this.value === closeStatus) {
+                closeRow.style.display = 'flex';
+            } else {
+                closeRow.style.display = 'none';
+                document.getElementById('close_cost').value = '0';
+            }
+        });
+    </script>
+{% endblock %} 

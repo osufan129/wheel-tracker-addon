@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Dashboard</h1>
+
+    <h2 class="mt-4">Open Cash Secured Puts (CSPs)</h2>
+    {% if open_csps %}
+        <div class="table-responsive">
+            <table class="table table-striped table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Sell Date</th>
+                        <th>Strike</th>
+                        <th>Expiration</th>
+                        <th>Premium</th>
+                        <th>Contracts</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for csp in open_csps %}
+                    <tr>
+                        <td>{{ csp.underlying.ticker }}</td>
+                        <td>{{ csp.sell_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ "%.2f"|format(csp.strike_price) }}</td>
+                        <td>{{ csp.expiration_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ "%.2f"|format(csp.premium_received) }}</td>
+                        <td>{{ csp.contracts }}</td>
+                        <td><span class="badge bg-info">{{ csp.status.value }}</span></td>
+                        <td>
+                            <div class="btn-group">
+                                <form action="{{ url_for('expire_csp', csp_id=csp.id) }}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Mark this CSP as Expired Worthless?')">Expire</button>
+                                </form>
+                                <form action="{{ url_for('assign_csp', csp_id=csp.id) }}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Mark this CSP as Assigned?\nThis will create a share holding entry.')">Assign</button>
+                                </form>
+                                <a href="{{ url_for('edit_csp_route', csp_id=csp.id) }}" class="btn btn-sm btn-secondary ms-1">Edit</a>
+                                <a href="{{ url_for('close_option_route', option_type='csp', option_id=csp.id) }}" class="btn btn-sm btn-info ms-1">Close Early</a>
+                                <form action="{{ url_for('delete_csp_route', csp_id=csp.id) }}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger ms-1" onclick="return confirm('Are you sure you want to delete this CSP?')">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No open CSPs.</p>
+        <a href="{{ url_for('add_csp_route') }}" class="btn btn-primary">Add First CSP</a>
+    {% endif %}
+
+    <h2 class="mt-5">Held Shares</h2>
+     {% if held_shares %}
+         <div class="table-responsive">
+            <table class="table table-striped table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Acquired Date</th>
+                        <th>Shares</th>
+                        <th>Cost Basis/Share</th>
+                        <th>Total Cost Basis</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for share in held_shares %}
+                    <tr>
+                        <td>{{ share.underlying.ticker }}</td>
+                        <td>{{ share.acquisition_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ share.number_of_shares }}</td>
+                        <td>{{ "%.2f"|format(share.cost_basis_per_share) }}</td>
+                        <td>{{ "%.2f"|format(share.total_cost_basis) }}</td>
+                        <td><span class="badge bg-primary">{{ share.status.value }}</span></td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{{ url_for('add_cc_route', share_id=share.id) }}" class="btn btn-sm btn-info">Sell CC</a>
+                                <a href="{{ url_for('sell_shares_route', share_id=share.id) }}" class="btn btn-sm btn-danger ms-1">Sell Shares</a>
+                                <form action="{{ url_for('delete_share_route', share_id=share.id) }}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger ms-1" onclick="return confirm('Are you sure you want to delete this share record?')">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No shares currently held.</p>
+    {% endif %}
+
+    <h2 class="mt-5">Open Covered Calls (CCs)</h2>
+    {% if open_ccs %}
+        <div class="table-responsive">
+            <table class="table table-striped table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Sell Date</th>
+                        <th>Strike</th>
+                        <th>Expiration</th>
+                        <th>Premium</th>
+                        <th>Contracts</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cc in open_ccs %}
+                    <tr>
+                        <td>{{ cc.underlying.ticker }}</td>
+                        <td>{{ cc.sell_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ "%.2f"|format(cc.strike_price) }}</td>
+                        <td>{{ cc.expiration_date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ "%.2f"|format(cc.premium_received) }}</td>
+                        <td>{{ cc.contracts }}</td>
+                        <td><span class="badge bg-info">{{ cc.status.value }}</span></td>
+                        <td>
+                            <div class="btn-group">
+                                <form action="{{ url_for('expire_cc', cc_id=cc.id) }}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Mark this CC as Expired Worthless?')">Expire</button>
+                                </form>
+                                <form action="{{ url_for('assign_cc', cc_id=cc.id) }}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Mark this CC as Assigned (Shares Called Away)?\nThis will update the share holding status.')">Assign</button>
+                                </form>
+                                <a href="{{ url_for('close_option_route', option_type='cc', option_id=cc.id) }}" class="btn btn-sm btn-info ms-1">Close Early</a>
+                                <form action="{{ url_for('delete_cc_route', cc_id=cc.id) }}" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger ms-1" onclick="return confirm('Are you sure you want to delete this CC?')">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>No open CCs.</p>
+    {% endif %}
+
+{% endblock %} 

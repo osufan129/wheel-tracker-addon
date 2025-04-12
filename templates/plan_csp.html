@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+
+{% block title %}Plan CSP - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">CSP Trade Planner</h1>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">CSP Calculator</h5>
+                </div>
+                <div class="card-body">
+                    <form id="cspCalculatorForm">
+                        <div class="mb-3">
+                            <label for="ticker" class="form-label">Ticker Symbol:</label>
+                            <input type="text" class="form-control text-uppercase" id="ticker" name="ticker" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="currentPrice" class="form-label">Current Stock Price:</label>
+                                <input type="number" step="0.01" class="form-control" id="currentPrice" name="currentPrice" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="strikePrice" class="form-label">Strike Price:</label>
+                                <input type="number" step="0.01" class="form-control" id="strikePrice" name="strikePrice" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="premium" class="form-label">Premium per Share:</label>
+                                <input type="number" step="0.01" class="form-control" id="premium" name="premium" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="contracts" class="form-label">Contracts:</label>
+                                <input type="number" class="form-control" id="contracts" name="contracts" value="1" min="1" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="daysToExpiration" class="form-label">Days to Expiration:</label>
+                                <input type="number" class="form-control" id="daysToExpiration" name="daysToExpiration" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="ivPercent" class="form-label">Implied Volatility (%):</label>
+                                <input type="number" step="0.01" class="form-control" id="ivPercent" name="ivPercent" placeholder="Optional">
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-primary" id="calculateBtn">Calculate</button>
+                        <button type="button" class="btn btn-success" id="createTradeBtn">Create This Trade</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Results</h5>
+                </div>
+                <div class="card-body">
+                    <div id="results" class="d-none">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="mb-3 border-bottom pb-2">
+                                    <h6>Premium</h6>
+                                    <div class="row">
+                                        <div class="col-7">Per Share:</div>
+                                        <div class="col-5 text-end"><span id="premiumPerShare"></span></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-7">Per Contract:</div>
+                                        <div class="col-5 text-end"><span id="premiumPerContract"></span></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-7">Total Premium:</div>
+                                        <div class="col-5 text-end"><span id="totalPremium" class="fw-bold text-success"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3 border-bottom pb-2">
+                                    <h6>Potential Returns</h6>
+                                    <div class="row">
+                                        <div class="col-7">ROI (If Expired):</div>
+                                        <div class="col-5 text-end"><span id="roiExpired" class="fw-bold"></span></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-7">Annualized:</div>
+                                        <div class="col-5 text-end"><span id="annualizedROI"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="mb-3 border-bottom pb-2">
+                                    <h6>Risk Analysis</h6>
+                                    <div class="row">
+                                        <div class="col-7">Capital Required:</div>
+                                        <div class="col-5 text-end"><span id="capitalRequired"></span></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-7">Breakeven Price:</div>
+                                        <div class="col-5 text-end"><span id="breakeven"></span></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-7">Downside Protection:</div>
+                                        <div class="col-5 text-end"><span id="downsideProtection"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3 border-bottom pb-2">
+                                    <h6>Assignment Scenario</h6>
+                                    <div class="row">
+                                        <div class="col-7">Cost Basis If Assigned:</div>
+                                        <div class="col-5 text-end"><span id="costBasis"></span></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-7">Discount to Current:</div>
+                                        <div class="col-5 text-end"><span id="discount"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info" id="recommendation">
+                        </div>
+                    </div>
+                    <div id="noResults">
+                        <p class="text-muted text-center my-5">Enter trade details and click Calculate to see analysis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recently Planned CSPs (Optional) -->
+    <div class="card mt-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Recent CSP Trades</h5>
+        </div>
+        <div class="card-body">
+            {% if recent_csps %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>Status</th>
+                            <th>Strike</th>
+                            <th>Expiration</th>
+                            <th>Premium</th>
+                            <th>ROI</th>
+                            <th>Annualized</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for csp in recent_csps %}
+                        <tr>
+                            <td>{{ csp.underlying.ticker }}</td>
+                            <td><span class="badge {{ 'bg-info' if csp.status == OptionStatus.OPEN else 'bg-secondary' }}">{{ csp.status.value }}</span></td>
+                            <td>{{ "%.2f"|format(csp.strike_price) }}</td>
+                            <td>{{ csp.expiration_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ "%.2f"|format(csp.premium_received) }}</td>
+                            <td>{{ "%.2f"|format((csp.premium_received / (csp.strike_price * csp.contracts * 100)) * 100) }}%</td>
+                            <td>
+                                {% set days = (csp.expiration_date - csp.sell_date).days %}
+                                {% if days > 0 %}
+                                    {{ "%.2f"|format(((csp.premium_received / (csp.strike_price * csp.contracts * 100)) * 100) * (365 / days)) }}%
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center">No recent CSP trades found</p>
+            {% endif %}
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calculateBtn = document.getElementById('calculateBtn');
+    const createTradeBtn = document.getElementById('createTradeBtn');
+    const results = document.getElementById('results');
+    const noResults = document.getElementById('noResults');
+    
+    // Set default values
+    document.getElementById('daysToExpiration').value = 30;
+    
+    calculateBtn.addEventListener('click', function() {
+        // Get input values
+        const currentPrice = parseFloat(document.getElementById('currentPrice').value);
+        const strikePrice = parseFloat(document.getElementById('strikePrice').value);
+        const premium = parseFloat(document.getElementById('premium').value);
+        const contracts = parseInt(document.getElementById('contracts').value);
+        const daysToExpiration = parseInt(document.getElementById('daysToExpiration').value);
+        const ivPercent = parseFloat(document.getElementById('ivPercent').value || 0);
+        
+        // Calculate results
+        const premiumPerShare = premium;
+        const premiumPerContract = premium * 100;
+        const totalPremium = premiumPerContract * contracts;
+        
+        const capitalRequired = strikePrice * 100 * contracts;
+        const roiPercentage = (premium / strikePrice) * 100;
+        const annualizedROI = roiPercentage * (365 / daysToExpiration);
+        
+        const breakeven = strikePrice - premium;
+        const downsideProtection = ((currentPrice - breakeven) / currentPrice) * 100;
+        const costBasis = strikePrice - premium;
+        const discountToCurrentPrice = ((currentPrice - costBasis) / currentPrice) * 100;
+        
+        // Display results
+        document.getElementById('premiumPerShare').textContent = '$' + premium.toFixed(2);
+        document.getElementById('premiumPerContract').textContent = '$' + premiumPerContract.toFixed(2);
+        document.getElementById('totalPremium').textContent = '$' + totalPremium.toFixed(2);
+        
+        document.getElementById('capitalRequired').textContent = '$' + capitalRequired.toFixed(2);
+        document.getElementById('roiExpired').textContent = roiPercentage.toFixed(2) + '%';
+        document.getElementById('annualizedROI').textContent = annualizedROI.toFixed(2) + '%';
+        
+        document.getElementById('breakeven').textContent = '$' + breakeven.toFixed(2);
+        document.getElementById('downsideProtection').textContent = downsideProtection.toFixed(2) + '%';
+        document.getElementById('costBasis').textContent = '$' + costBasis.toFixed(2);
+        document.getElementById('discount').textContent = discountToCurrentPrice.toFixed(2) + '%';
+        
+        // Generate recommendation
+        let recommendation = '';
+        if (downsideProtection < 5) {
+            recommendation += 'Low downside protection. Consider a lower strike price. ';
+        }
+        if (roiPercentage < 1) {
+            recommendation += 'Low ROI. Consider higher premium or lower strike. ';
+        }
+        if (annualizedROI > 20) {
+            recommendation += 'Good annualized return! ';
+        }
+        
+        document.getElementById('recommendation').textContent = recommendation || 'Trade looks reasonable based on inputs.';
+        
+        // Show results
+        results.classList.remove('d-none');
+        noResults.classList.add('d-none');
+    });
+    
+    createTradeBtn.addEventListener('click', function() {
+        // Get values from form
+        const ticker = document.getElementById('ticker').value.toUpperCase();
+        const strikePrice = document.getElementById('strikePrice').value;
+        const premium = document.getElementById('premium').value;
+        const contracts = document.getElementById('contracts').value;
+        const daysToExpiration = document.getElementById('daysToExpiration').value;
+        
+        // Generate URL for creating a real CSP trade with these values
+        const today = new Date();
+        const expirationDate = new Date();
+        expirationDate.setDate(today.getDate() + parseInt(daysToExpiration));
+        
+        const todayStr = today.toISOString().split('T')[0];
+        const expirationStr = expirationDate.toISOString().split('T')[0];
+        
+        // Calculate total premium from per-share premium
+        const totalPremium = premium * 100 * contracts;
+        
+        // Redirect to the add CSP form with values pre-filled
+        const url = `/add_csp?ticker=${ticker}&strike_price=${strikePrice}&premium_received=${totalPremium}&contracts=${contracts}&sell_date=${todayStr}&expiration_date=${expirationStr}`;
+        window.location.href = url;
+    });
+});
+</script>
+{% endblock %} 

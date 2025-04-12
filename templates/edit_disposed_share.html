@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Disposed Shares - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1>Edit Disposed Shares</h1>
+
+    <form method="post" class="mt-4">
+        <div class="mb-3">
+            <label for="ticker" class="form-label">Ticker Symbol:</label>
+            <input type="text" class="form-control text-uppercase" id="ticker" name="ticker" value="{{ share.underlying.ticker }}" readonly disabled>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="acquisition_date" class="form-label">Acquisition Date:</label>
+                <input type="date" class="form-control" id="acquisition_date" name="acquisition_date" value="{{ share.acquisition_date.strftime('%Y-%m-%d') }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="number_of_shares" class="form-label">Number of Shares:</label>
+                <input type="number" class="form-control" id="number_of_shares" name="number_of_shares" value="{{ share.number_of_shares }}" min="1" required>
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="cost_basis_per_share" class="form-label">Cost Basis per Share:</label>
+                <input type="number" step="0.01" class="form-control" id="cost_basis_per_share" name="cost_basis_per_share" value="{{ share.cost_basis_per_share }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="status" class="form-label">Status:</label>
+                <select class="form-select" id="status" name="status" required>
+                    <option value="{{ ShareStatus.CALLED_AWAY.name }}" {% if share.status == ShareStatus.CALLED_AWAY %}selected{% endif %}>Called Away</option>
+                    <option value="{{ ShareStatus.SOLD.name }}" {% if share.status == ShareStatus.SOLD %}selected{% endif %}>Sold Manually</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="disposal_date" class="form-label">Disposal Date:</label>
+                <input type="date" class="form-control" id="disposal_date" name="disposal_date" value="{{ share.disposal_date.strftime('%Y-%m-%d') if share.disposal_date else '' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="disposal_price_per_share" class="form-label">Disposal Price per Share:</label>
+                <input type="number" step="0.01" class="form-control" id="disposal_price_per_share" name="disposal_price_per_share" value="{{ share.disposal_price_per_share }}" required>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">Profit/Loss Summary</div>
+            <div class="card-body">
+                {% set pl_per_share = share.disposal_price_per_share - share.cost_basis_per_share %}
+                {% set total_pl = pl_per_share * share.number_of_shares %}
+                <p><strong>P/L per Share:</strong> 
+                    <span class="{{ 'text-success' if pl_per_share >= 0 else 'text-danger' }}">
+                        {{ "%.2f"|format(pl_per_share) }}
+                    </span>
+                </p>
+                <p><strong>Total P/L:</strong> 
+                    <span class="{{ 'text-success' if total_pl >= 0 else 'text-danger' }}">
+                        {{ "%.2f"|format(total_pl) }}
+                    </span>
+                </p>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update Share Details</button>
+        <a href="{{ url_for('history') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+{% endblock %} 

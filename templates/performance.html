@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}Performance Dashboard - Wheel Tracker{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Performance Dashboard</h1>
+
+    <!-- Summary metrics card -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Overall Performance</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 text-center mb-3">
+                            <h3 class="mb-0 {{ 'text-success' if total_realized_pl >= 0 else 'text-danger' }}">{{ "${:,.2f}".format(total_realized_pl) }}</h3>
+                            <small class="text-muted">Total Realized P/L</small>
+                        </div>
+                        <div class="col-6 text-center mb-3">
+                            <h3 class="mb-0 text-primary">${{ "{:,.2f}".format(total_premium_collected) }}</h3>
+                            <small class="text-muted">Total Premium Collected</small>
+                        </div>
+                        <div class="col-6 text-center">
+                            <h3 class="mb-0 text-primary">{{ "{:,.2f}".format(total_premium_spent) }}</h3>
+                            <small class="text-muted">Total Premium Spent</small>
+                        </div>
+                        <div class="col-6 text-center">
+                            <h3 class="mb-0 {{ 'text-success' if total_net_premium >= 0 else 'text-danger' }}">{{ "${:,.2f}".format(total_net_premium) }}</h3>
+                            <small class="text-muted">Net Premium</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Active Positions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 text-center mb-3">
+                            <h3 class="mb-0">{{ open_csps_count }}</h3>
+                            <small class="text-muted">Open CSPs</small>
+                        </div>
+                        <div class="col-6 text-center mb-3">
+                            <h3 class="mb-0">{{ open_ccs_count }}</h3>
+                            <small class="text-muted">Open CCs</small>
+                        </div>
+                        <div class="col-6 text-center">
+                            <h3 class="mb-0">{{ held_shares_count }}</h3>
+                            <small class="text-muted">Stocks Held</small>
+                        </div>
+                        <div class="col-6 text-center">
+                            <h3 class="mb-0">${{ "{:,.2f}".format(total_capital_deployed) }}</h3>
+                            <small class="text-muted">Capital Deployed</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics by ticker -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Performance by Ticker</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>CSP Premium</th>
+                            <th>CC Premium</th>
+                            <th>Stock P/L</th>
+                            <th>Total P/L</th>
+                            <th>Win Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticker, data in ticker_stats.items() %}
+                        <tr>
+                            <td><strong>{{ ticker }}</strong></td>
+                            <td>{{ "${:,.2f}".format(data.csp_premium) }}</td>
+                            <td>{{ "${:,.2f}".format(data.cc_premium) }}</td>
+                            <td class="{{ 'text-success' if data.stock_pl >= 0 else 'text-danger' }}">
+                                {{ "${:,.2f}".format(data.stock_pl) }}
+                            </td>
+                            <td class="{{ 'text-success' if data.total_pl >= 0 else 'text-danger' }}">
+                                <strong>{{ "${:,.2f}".format(data.total_pl) }}</strong>
+                            </td>
+                            <td>{{ "{:.1f}%".format(data.win_rate * 100) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cost Basis and Transactions -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Current Positions Cost Basis</h5>
+                </div>
+                <div class="card-body">
+                    {% if held_shares %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Ticker</th>
+                                    <th>Shares</th>
+                                    <th>Cost Basis/Share</th>
+                                    <th>Total Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for share in held_shares %}
+                                <tr>
+                                    <td>{{ share.underlying.ticker }}</td>
+                                    <td>{{ share.number_of_shares }}</td>
+                                    <td>{{ "${:.2f}".format(share.cost_basis_per_share) }}</td>
+                                    <td>{{ "${:.2f}".format(share.total_cost_basis) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-center mt-3">No shares currently held.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Recent Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Ticker</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tx in recent_transactions %}
+                                <tr>
+                                    <td>{{ tx.date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ tx.ticker }}</td>
+                                    <td>{{ tx.type }}</td>
+                                    <td class="{{ 'text-success' if tx.amount > 0 else 'text-danger' }}">
+                                        {{ "${:.2f}".format(tx.amount) }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %} 
