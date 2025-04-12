@@ -146,6 +146,10 @@ def index():
 
 # For demonstration purposes, I'll include a few critical routes:
 
+@app.route('/history')
+def history():
+    return render_template('history.html')
+
 @app.route('/add_csp', methods=['GET', 'POST'])
 def add_csp_route():
     if request.method == 'POST':
