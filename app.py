@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash 
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 import os
 from datetime import datetime, date
@@ -7,7 +7,7 @@ import logging
 
 
 # Basic Flask App Setup
-app = Flask(__name__) 
+app = Flask(__name__)
 
 # Database configuration from environment variable
 database_url = os.environ.get('DATABASE_URL', 'sqlite:///trades.db')
@@ -138,15 +138,15 @@ with app.app_context():
     try:
         logger.info("Initializing Database")
         db.create_all()
-        logger.info("Database Initialized")        
-    except Exception as e:        
+        logger.info("Database Initialized")
+    except Exception as e:
         logger.error(f"Error initializing database: {e}")
         if "already exists" in str(e):
             logger.info("Database already exists.")
         else:
             logger.exception("Unexpected error while initializing database.")
-
-            raise
+            # Decide if you want to raise here or just log
+            # raise
 
 # --- Routes ---
 @app.route('/')
@@ -170,122 +170,144 @@ def index():
 
 @app.route('/history')
 def history():
-    return render_template('history.html')
+    # Query for closed/finished trades
+    closed_csps = CspTrade.query.filter(CspTrade.status != OptionStatus.OPEN).order_by(CspTrade.close_date.desc()).all()
+    disposed_shares = ShareHolding.query.filter(ShareHolding.status != ShareStatus.HELD).order_by(ShareHolding.disposal_date.desc()).all()
+    closed_ccs = CcTrade.query.filter(CcTrade.status != OptionStatus.OPEN).order_by(CcTrade.close_date.desc()).all()
+
+    return render_template('history.html',
+                           closed_csps=closed_csps,
+                           disposed_shares=disposed_shares,
+                           closed_ccs=closed_ccs,
+                           OptionStatus=OptionStatus,
+                           ShareStatus=ShareStatus)
 
 @app.route('/add_csp', methods=['GET', 'POST'])
 def add_csp_route():
-    try:
-        if request.method == 'POST':
+    if request.method == 'POST':
+        try:
             # --- Input Validation and Sanitization ---
-            # Check if all required fields are present
             required_fields = ['ticker', 'sell_date', 'strike_price', 'expiration_date', 'premium_received', 'contracts']
-            if not all(field in request.form for field in required_fields):
+            if not all(field in request.form and request.form[field] for field in required_fields):
                 flash('All fields are required.', 'error')
                 logger.warning("Missing fields on CSP creation")
-                return redirect(url_for('add_csp_route'))
+                # Return and render template to show the form again with the error
+                return render_template('add_csp.html', **request.form) # Pass back form data
 
             ticker = request.form['ticker'].upper()
             sell_date_str = request.form['sell_date']
             expiration_date_str = request.form['expiration_date']
 
-            # Sanitize string inputs (basic HTML sanitization)
+            # Sanitize ticker
             ticker = ''.join(char for char in ticker if char.isalnum())
 
-            # Validate inputs
+            # Validate ticker format (must be only letters)
+            if not ticker.isalpha():
+                flash('Ticker must contain only letters.', 'error')
+                return render_template('add_csp.html', **request.form) # Pass back form data
+
+            # Validate numeric inputs
             try:
                 strike_price = float(request.form['strike_price'])
                 premium_received = float(request.form['premium_received'])
                 contracts = int(request.form['contracts'])
+                if strike_price <= 0 or premium_received <= 0 or contracts <= 0:
+                     flash('Numeric values must be positive.', 'error')
+                     return render_template('add_csp.html', **request.form) # Pass back form data
             except ValueError:
                 flash('Strike Price, Premium Received, and Contracts must be valid numbers.', 'error')
-                return redirect(url_for('add_csp_route'))
+                return render_template('add_csp.html', **request.form) # Pass back form data
 
+            # Validate date inputs
             try:
                 sell_date = datetime.strptime(sell_date_str, '%Y-%m-%d').date()
                 expiration_date = datetime.strptime(expiration_date_str, '%Y-%m-%d').date()
             except ValueError:
                 flash('Invalid date format. Please use YYYY-MM-DD.', 'error')
-                return redirect(url_for('add_csp_route'))
+                return render_template('add_csp.html', **request.form) # Pass back form data
 
-            # Validate dates are not in the future
+            # Validate date logic
             today = date.today()
-            if sell_date > today or expiration_date <= today:
-                flash('Sell date must be today or in the past and expiration date must be in the future.', 'error')
-                return redirect(url_for('add_csp_route'))
+            # Sell date can be today or in the past, but not future
+            if sell_date > today:
+                 flash('Sell date cannot be in the future.', 'error')
+                 return render_template('add_csp.html', **request.form) # Pass back form data
+            # Expiration must be strictly after the sell date
+            if expiration_date <= sell_date:
+                flash('Expiration date must be after the sell date.', 'error')
+                return render_template('add_csp.html', **request.form) # Pass back form data
+            # --- End of Input Validation ---
 
-            # Validate ticker (must be only letters)
-            if not ticker.isalpha():
-                flash('Ticker must contain only letters.', 'error')
-                return redirect(url_for('add_csp_route'))
 
-            
+            # Find or create the underlying stock
+            underlying = Underlying.query.filter_by(ticker=ticker).first()
+            if not underlying:
+                underlying = Underlying(ticker=ticker)
+                logger.info(f"New underlying {ticker} created")
+                db.session.add(underlying)
+                # Commit here to get underlying.id if needed, or commit later
+                # Be mindful of potential partial commits if subsequent steps fail
 
+            # Create new CSP trade
+            new_csp = CspTrade(
+                underlying_id=underlying.id, # Requires underlying to be committed or flushed
+                underlying=underlying, # Alternative: assign object directly
+                sell_date=sell_date,
+                strike_price=strike_price,
+                expiration_date=expiration_date,
+                premium_received=premium_received,
+                contracts=contracts,
+                status=OptionStatus.OPEN
+            )
+
+            db.session.add(new_csp)
+            db.session.commit() # Commit all changes together
+
+            flash('CSP trade successfully added', 'success')
+            logger.info(f"CSP trade added: {new_csp}")
+            return redirect(url_for('index'))
+
+        except Exception as e:
+            db.session.rollback() # Rollback in case of any error during processing
+            flash(f'An unexpected error occurred: {str(e)}', 'error')
+            logger.exception(f"Unexpected error while adding a new CSP: {e}")
+            # Log the error and show the form again
+            return render_template('add_csp.html', **request.form) # Pass back form data
+
+    # --- Handle GET Request ---
+    else: # request.method == 'GET'
+        # Prefill the form if data is available in args (e.g., from plan_csp)
+        ticker = request.args.get('ticker', '')
+        strike_price = request.args.get('strike_price', '')
+        premium_received = request.args.get('premium_received', '')
+        contracts = request.args.get('contracts', '')
+        sell_date_str = request.args.get('sell_date', '')
+        expiration_date_str = request.args.get('expiration_date', '')
+
+        # Format dates if provided
+        sell_date = ''
+        if sell_date_str:
             try:
-                 # Find or create the underlying stock
-                underlying = Underlying.query.filter_by(ticker=ticker).first()
-                if not underlying:
-                    underlying = Underlying(ticker=ticker)
-                    logger.info(f"New underlying {ticker} created")
-                    db.session.add(underlying)
-                    db.session.commit()
+                sell_date = datetime.strptime(sell_date_str, '%Y-%m-%d').date().strftime('%Y-%m-%d')
+            except ValueError:
+                flash('Invalid sell_date format in URL', 'warning') # Warn but don't block page load
 
-                # Create new CSP trade
-                new_csp = CspTrade(
-                    underlying_id=underlying.id,
-                    sell_date=sell_date,
-                    strike_price=strike_price,
-                    expiration_date=expiration_date,
-                    premium_received=premium_received,
-                    contracts=contracts,
-                    status=OptionStatus.OPEN
-                )
-
-                db.session.add(new_csp)
-                try:
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    flash(f'An error occurred while saving to the database: {str(e)}', 'error')
-                    logger.error(f"Database error: {e}")
-                    return redirect(url_for('add_csp_route'))
+        expiration_date = ''
+        if expiration_date_str:
+             try:
+                 expiration_date = datetime.strptime(expiration_date_str, '%Y-%m-%d').date().strftime('%Y-%m-%d')
+             except ValueError:
+                 flash('Invalid expiration_date format in URL', 'warning') # Warn but don't block page load
 
 
-                flash('CSP trade successfully added', 'success')
-                logger.info(f"CSP trade added: {new_csp}")
+        return render_template('add_csp.html',
+                              ticker=ticker,
+                              strike_price=strike_price,
+                              premium_received=premium_received,
+                              contracts=contracts,
+                              sell_date=sell_date,
+                              expiration_date=expiration_date)
 
-                return redirect(url_for('index'))
-            except Exception as e:
-                db.session.rollback()
-                flash(f'An unexpected error occurred: {str(e)}', 'error')
-                logger.exception(f"Unexpected error while adding a new CSP: {e}")
-                return redirect(url_for('add_csp_route'))
-
-        return redirect(url_for('add_csp_route'))
-    except Exception as e :
-        flash(f'An error occurred while processing your CSP: {str(e)}', 'error')      
-        
-    #Prefill the form if the data is available
-    ticker = request.args.get('ticker', '')
-    strike_price = request.args.get('strike_price', '')
-    premium_received = request.args.get('premium_received', '')
-    contracts = request.args.get('contracts', '')
-    sell_date = request.args.get('sell_date', '')    
-    expiration_date = request.args.get('expiration_date', '')
-
-
-    if sell_date:
-        sell_date = datetime.strptime(sell_date, '%Y-%m-%d').date().strftime('%Y-%m-%d')       
-    if expiration_date:
-        expiration_date = datetime.strptime(expiration_date, '%Y-%m-%d').date().strftime('%Y-%m-%d')        
-
-    
-    return render_template('add_csp.html',
-                          ticker=ticker,
-                          strike_price=strike_price,
-                          premium_received=premium_received,
-                          contracts=contracts,
-                          sell_date=sell_date,
-                          expiration_date=expiration_date)
 
 @app.route('/plan_csp')
 def plan_csp_route():
@@ -296,5 +318,11 @@ def plan_csp_route():
 # Many more routes would be included here to match your original app.py
 
 if __name__ == '__main__':
-    # For local development only
-    app.run(host='0.0.0.0', port=5000)
+    # For local development only - Gunicorn runs the app in production
+    with app.app_context():
+        try:
+             db.create_all() # Ensure DB is created if running directly
+             logger.info("Database check/creation complete for local run.")
+        except Exception as e:
+             logger.error(f"Error during DB check/creation for local run: {e}")
+    app.run(debug=True, host='0.0.0.0', port=8099) # Use a different port, enable debug for dev
