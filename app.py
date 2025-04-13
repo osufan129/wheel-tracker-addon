@@ -1,10 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import OperationalError
 import os
 from datetime import datetime, date
 import enum
 import logging
-
 
 # Basic Flask App Setup
 app = Flask(__name__)
@@ -24,10 +24,8 @@ ingress_url = os.environ.get('INGRESS_URL', '')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-
 # Log startup
 logger.info("Starting Wheel Tracker App")
-
 
 # Home Assistant add-on specific configuration
 # Modify url_for to work with ingress
@@ -137,14 +135,22 @@ class CcTrade(db.Model):
 with app.app_context():
     try:
         logger.info("Initializing Database")
-        # Add checkfirst=True to prevent errors if tables already exist
-        db.create_all(checkfirst=True) 
-        logger.info("Database Initialized/Check Complete")
+        db.create_all() # Attempt to create tables
+        logger.info("Database tables created or already exist.")
+    except OperationalError as e:
+        # Check if the error is specifically about tables already existing
+        if 'already exists' in str(e).lower():
+            logger.info("Database tables already exist.")
+        else:
+            # Log other OperationalErrors as errors
+            logger.error(f"Database Operational Error: {e}")
+            logger.exception("Unexpected OperationalError while initializing database.")
     except Exception as e:
-        # Log the error but don't need the specific 'already exists' check anymore
-        logger.error(f"Error initializing database: {e}")
-        logger.exception("Unexpected error while initializing database.")
-        # raise # Optional: re-raise the exception if it's critical
+        # Log any other unexpected errors
+        logger.error(f"Unexpected error initializing database: {e}")
+        logger.exception("General exception while initializing database.")
+        # Depending on severity, you might want to re-raise the exception
+        # raise
 
 # --- Routes ---
 @app.route('/')
@@ -319,9 +325,14 @@ if __name__ == '__main__':
     # For local development only - Gunicorn runs the app in production
     with app.app_context():
         try:
-             # Add checkfirst=True here as well for direct runs
-             db.create_all(checkfirst=True) 
-             logger.info("Database check/creation complete for local run.")
+            logger.info("Checking/Initializing Database for local run")
+            db.create_all() # Attempt to create tables
+            logger.info("Database check/creation complete for local run.")
+        except OperationalError as e:
+            if 'already exists' in str(e).lower():
+                logger.info("Database tables already exist (local run).")
+            else:
+                 logger.error(f"Database Operational Error during local run check: {e}")
         except Exception as e:
              logger.error(f"Error during DB check/creation for local run: {e}")
     app.run(debug=True, host='0.0.0.0', port=8099) # Use a different port, enable debug for dev
