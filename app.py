@@ -137,16 +137,14 @@ class CcTrade(db.Model):
 with app.app_context():
     try:
         logger.info("Initializing Database")
-        db.create_all()
-        logger.info("Database Initialized")
+        # Add checkfirst=True to prevent errors if tables already exist
+        db.create_all(checkfirst=True) 
+        logger.info("Database Initialized/Check Complete")
     except Exception as e:
+        # Log the error but don't need the specific 'already exists' check anymore
         logger.error(f"Error initializing database: {e}")
-        if "already exists" in str(e):
-            logger.info("Database already exists.")
-        else:
-            logger.exception("Unexpected error while initializing database.")
-            # Decide if you want to raise here or just log
-            # raise
+        logger.exception("Unexpected error while initializing database.")
+        # raise # Optional: re-raise the exception if it's critical
 
 # --- Routes ---
 @app.route('/')
@@ -321,7 +319,8 @@ if __name__ == '__main__':
     # For local development only - Gunicorn runs the app in production
     with app.app_context():
         try:
-             db.create_all() # Ensure DB is created if running directly
+             # Add checkfirst=True here as well for direct runs
+             db.create_all(checkfirst=True) 
              logger.info("Database check/creation complete for local run.")
         except Exception as e:
              logger.error(f"Error during DB check/creation for local run: {e}")
